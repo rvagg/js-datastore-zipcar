@@ -12,12 +12,12 @@
   "dependencies": {
     "cids": "~0.7.1",
     "interface-datastore": "~0.7.0",
-    "jsdoc4readme": "^1.2.0",
     "jszip": "~3.2.2"
   },
   "devDependencies": {
     "@ipld/block": "~2.0.4",
     "ipld-dag-pb": "~0.18.0",
+    "jsdoc4readme": "^1.2.0",
     "mocha": "~6.2.0"
   },
   "repository": {
