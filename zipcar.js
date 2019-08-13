@@ -29,6 +29,7 @@ class ZipDatastore {
     this._zip = null
     this._opened = false
     this._modified = false
+    this._comment = null
   }
 
   /**
@@ -46,6 +47,7 @@ class ZipDatastore {
     this._zip = null
     this._opened = false
     this._modified = false
+    this._comment = null
 
     let fd
     try {
@@ -62,6 +64,7 @@ class ZipDatastore {
     const buf = await fs.readFile(fd)
     await fs.close(fd)
     this._zip = await Zip.loadAsync(buf)
+    this._comment = this._zip.comment
     this._opened = true
   }
 
@@ -161,6 +164,31 @@ class ZipDatastore {
   }
 
   /**
+   * Set a comment on this ZIP archive. Can be an arbitrary string but a good use is as a root CID, or a newline
+   * separated list of root CIDs in this archive.
+   *
+   * The comment will not be written to the ZIP archive until `close()` is called, in the meantime it is stored
+   * in memory.
+   *
+   * @param {string} comment an arbitrary comment to store in the ZIP archive.
+   */
+  setComment (comment) {
+    if (typeof comment !== 'string') {
+      throw new TypeError('Comment can only be a string')
+    }
+
+    this._modified = true
+    this._comment = comment
+  }
+
+  /**
+   * Get the comment set on this ZIP archive if one exists. See {@link ZipDatastore#setComment}.
+   */
+  getComment () {
+    return this._comment
+  }
+
+  /**
    * Close this archive and write its new contents if required.
    *
    * If a mutation operation has been called on the open archive (`put()`, `delete()`), a new ZIP archive will be
@@ -186,7 +214,15 @@ class ZipDatastore {
       }
     }
 
-    const options = { type: 'nodebuffer', streamFiles: true, compression: 'DEFLATE', compressionOptions: { level: 9 } }
+    const options = {
+      type: 'nodebuffer',
+      streamFiles: true,
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 },
+    }
+    if (this._comment) {
+      options.comment = this._comment
+    }
     const file = this._zipFile
 
     return new Promise((resolve, reject) => {

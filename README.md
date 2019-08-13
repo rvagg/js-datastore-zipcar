@@ -65,6 +65,8 @@ Archive:  example.zcar
  * [`async ZipDatastore#get(key)`](#ZipDatastore_get)
  * [`async ZipDatastore#has(key)`](#ZipDatastore_has)
  * [`async ZipDatastore#delete(key)`](#ZipDatastore_delete)
+ * [`ZipDatastore#setComment(comment)`](#ZipDatastore_setComment)
+ * [`ZipDatastore#getComment()`](#ZipDatastore_getComment)
  * [`async ZipDatastore#close()`](#ZipDatastore_close)
 
 <a name="ZipDatastore"></a>
@@ -138,6 +140,24 @@ If the `key` does not exist, `put()` will silently return.
 **Parameters:**
 
 * **`key`** _(`string|Key|CID`)_: a `CID` or `CID`-convertable object to identify the block.
+
+<a name="ZipDatastore_setComment"></a>
+### `ZipDatastore#setComment(comment)`
+
+Set a comment on this ZIP archive. Can be an arbitrary string but a good use is as a root CID, or a newline
+separated list of root CIDs in this archive.
+
+The comment will not be written to the ZIP archive until `close()` is called, in the meantime it is stored
+in memory.
+
+**Parameters:**
+
+* **`comment`** _(`string`)_: an arbitrary comment to store in the ZIP archive.
+
+<a name="ZipDatastore_getComment"></a>
+### `ZipDatastore#getComment()`
+
+Get the comment set on this ZIP archive if one exists. See [`ZipDatastore#setComment`](#ZipDatastore_setComment).
 
 <a name="ZipDatastore_close"></a>
 ### `async ZipDatastore#close()`
