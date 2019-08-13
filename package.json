@@ -2,7 +2,7 @@
   "name": "datastore-zipcar",
   "version": "1.0.2",
   "description": "An implementation of a Datastore (https://github.com/ipfs/interface-datastore) for IPLD blocks that operates on ZIP files",
-  "main": "test.js",
+  "main": "zipcar.js",
   "scripts": {
     "test": "mocha test.js",
     "docs": "jsdoc4readme --readme zipcar.js"
