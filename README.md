@@ -66,7 +66,7 @@ Archive:  example.zcar
  * [`async ZipDatastore#has(key)`](#ZipDatastore_has)
  * [`async ZipDatastore#delete(key)`](#ZipDatastore_delete)
  * [`ZipDatastore#setComment(comment)`](#ZipDatastore_setComment)
- * [`ZipDatastore#getComment()`](#ZipDatastore_getComment)
+ * [`async ZipDatastore#getComment()`](#ZipDatastore_getComment)
  * [`async ZipDatastore#close()`](#ZipDatastore_close)
 
 <a name="ZipDatastore"></a>
@@ -155,7 +155,7 @@ in memory.
 * **`comment`** _(`string`)_: an arbitrary comment to store in the ZIP archive.
 
 <a name="ZipDatastore_getComment"></a>
-### `ZipDatastore#getComment()`
+### `async ZipDatastore#getComment()`
 
 Get the comment set on this ZIP archive if one exists. See [`ZipDatastore#setComment`](#ZipDatastore_setComment).
 

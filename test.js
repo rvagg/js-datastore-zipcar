@@ -185,5 +185,5 @@ async function verifyBlocks (zipDs, modified) {
 
 async function verifyComment (zipDs, modified) {
   const expected = (await cborBlocks[modified ? 1 : 2].cid()).toString()
-  assert.strictEqual(zipDs.getComment(), expected)
+  assert.strictEqual(await zipDs.getComment(), expected)
 }

@@ -184,7 +184,11 @@ class ZipDatastore {
   /**
    * Get the comment set on this ZIP archive if one exists. See {@link ZipDatastore#setComment}.
    */
-  getComment () {
+  async getComment () {
+    if (!this._opened) {
+      await this.open()
+    }
+
     return this._comment
   }
 
