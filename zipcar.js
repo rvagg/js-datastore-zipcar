@@ -3,9 +3,15 @@ const { promisify } = require('util')
 fs.open = promisify(fs.open)
 fs.close = promisify(fs.close)
 fs.readFile = promisify(fs.readFile)
-const Zip = require('jszip')
+fs.stat = promisify(fs.stat)
+fs.access = promisify(fs.access)
+const ZipArchiveOutputStream = require('compress-commons').ZipArchiveOutputStream
+const ZipArchiveEntry = require('compress-commons').ZipArchiveEntry
+const StreamZip = require('node-stream-zip')
 const { Errors } = require('interface-datastore')
+const bl = require('bl')
 const CID = require('cids')
+const { toKey } = require('./util')
 
 /**
  * ZipDatastore is a class to manage reading from, and writing to a ZIP archives using [CID](https://github.com/multiformats/js-cid)s as keys and
@@ -49,6 +55,34 @@ class ZipDatastore {
     this._modified = false
     this._comment = null
 
+    try {
+      await fs.access(this._zipFile, fs.constants.R_OK)
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        // new file
+        this._zip = {
+          entries: () => ({}),
+          entry: () => null
+        }
+        this._opened = true
+        return
+      }
+      throw err
+    }
+
+    this._zip = await new Promise((resolve, reject) => {
+      const zip = new StreamZip({
+        file: this._zipFile,
+        storeEntries: true
+      })
+      zip.on('error', reject)
+      zip.on('ready', () => resolve(zip))
+    })
+
+    this._comment = this._zip.comment
+    this._opened = true
+
+    /*
     let fd
     try {
       fd = await fs.open(this._zipFile)
@@ -66,6 +100,7 @@ class ZipDatastore {
     this._zip = await Zip.loadAsync(buf)
     this._comment = this._zip.comment
     this._opened = true
+    */
   }
 
   /**
@@ -89,7 +124,7 @@ class ZipDatastore {
       await this.open()
     }
 
-    if (!this._zip.files[key]) {
+    if (!this._zip.entry(key)) {
       this._cache[key] = value
       this._modified = true
     } // else dupe, assume CID is correct and ignore
@@ -112,15 +147,34 @@ class ZipDatastore {
       return this._cache[key]
     }
 
-    if (!this._zip.files[key]) {
+    if (!this._zip.entry(key)) {
       throw Errors.notFoundError()
     }
 
+    return new Promise((resolve, reject) => {
+      this._zip.stream(key, (err, stream) => {
+        /* istanbul ignore next toohard */
+        if (err) {
+          return reject(err)
+        }
+        stream.on('error', reject)
+          .pipe(bl((err, data) => {
+            /* istanbul ignore next toohard */
+            if (err) {
+              return reject(err)
+            }
+            this._cache[key] = data
+            resolve(this._cache[key])
+          }))
+      })
+    })
+    /*
     const value = this._zip.files[key].async('uint8array')
     value.then((v) => {
       this._cache[key] = v
     })
     return value
+    */
   }
 
   /**
@@ -136,7 +190,7 @@ class ZipDatastore {
       await this.open()
     }
 
-    return this._cache[key] != null | this._zip.files[key] != null
+    return this._cache[key] != null | this._zip.entry(key) != null
   }
 
   /**
@@ -158,8 +212,9 @@ class ZipDatastore {
       this._cache[key] = null
     }
 
-    if (this._zip.files[key]) {
-      this._zip.files[key] = null
+    if (this._zip.entry(key)) {
+      this._zip.entries()[key] = null // this is probably a bit unsafe, no guarantee this will be mutable into the future
+      this._modified = true
     }
   }
 
@@ -172,24 +227,37 @@ class ZipDatastore {
    *
    * @param {string} comment an arbitrary comment to store in the ZIP archive.
    */
-  setComment (comment) {
-    if (typeof comment !== 'string') {
-      throw new TypeError('Comment can only be a string')
+  setRoots (roots) {
+    if (!Array.isArray(roots)) {
+      roots = [roots]
+    }
+    const comment = []
+    for (const root of roots) {
+      if (!CID.isCID(root)) {
+        throw new TypeError('Roots may only be a CID or an array of CIDs')
+      }
+      comment.push(root)
     }
 
     this._modified = true
-    this._comment = comment
+    this._comment = comment.join('\n')
   }
 
   /**
    * Get the comment set on this ZIP archive if one exists. See {@link ZipDatastore#setComment}.
    */
-  async getComment () {
+  async getRoots () {
     if (!this._opened) {
       await this.open()
     }
 
-    return this._comment
+    const roots = []
+    for (const line of this._comment.split('\n')) {
+      try {
+        roots.push(new CID(line))
+      } catch (e) {}
+    }
+    return roots
   }
 
   /**
@@ -204,13 +272,39 @@ class ZipDatastore {
     }
   }
 
-  async _write (callback) {
-    for (const key in this._zip.files) {
-      if (this._zip.files[key] && !this._cache[key]) {
+  async _write () {
+    for (const key in this._zip.entries()) {
+      if (this._zip.entry(key) && !this._cache[key]) {
         await this.get(key) // cache
       }
     }
 
+    const zipStream = new ZipArchiveOutputStream()
+    zipStream.entryAsync = promisify(zipStream.entry)
+    zipStream.setComment(this._comment)
+    const outStream = fs.createWriteStream(this._zipFile)
+    zipStream.pipe(outStream)
+
+    for (const [key, value] of Object.entries(this._cache)) {
+      if (!value) { // deleted
+        continue
+      }
+      const entry = new ZipArchiveEntry(key)
+      entry.setTime(new Date())
+      entry.setMethod(8) // DEFLATE=8, STORE=0
+      // entry.setComment(comment)
+      entry.setUnixMode(40960) // 0120000
+      await zipStream.entryAsync(entry, Buffer.isBuffer(value) ? value : Buffer.from(value))
+    }
+
+    return new Promise((resolve, reject) => {
+      zipStream.finish()
+      zipStream.on('error', reject)
+      outStream.on('error', reject)
+      outStream.on('finish', resolve)
+    })
+
+    /*
     const zip = new Zip()
     for (const [key, value] of Object.entries(this._cache)) {
       if (value) {
@@ -222,7 +316,7 @@ class ZipDatastore {
       type: 'nodebuffer',
       streamFiles: true,
       compression: 'DEFLATE',
-      compressionOptions: { level: 9 },
+      compressionOptions: { level: 9 }
     }
     if (this._comment) {
       options.comment = this._comment
@@ -236,29 +330,16 @@ class ZipDatastore {
         .on('error', reject)
         .on('finish', resolve)
     })
+    */
   }
 
-  batch () {
+  async batch () {
     throw new Error('Unimplemented operation')
   }
 
-  query (q) {
+  async query (q) {
     throw new Error('Unimplemented operation')
   }
-}
-
-function toKey (key, method) {
-  if (!CID.isCID(key)) {
-    try {
-      key = new CID(key.toString())
-    } catch (e) {
-      throw new TypeError(`${method}() only accepts CIDs or CID strings`)
-    }
-  }
-
-  // toBaseEncodedString() is supposed to do this automatically but let's be explicit to be
-  // sure & future-proof
-  return key.toBaseEncodedString(key.version === 0 ? 'base58btc' : 'base32')
 }
 
 module.exports = ZipDatastore
