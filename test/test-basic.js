@@ -1,11 +1,14 @@
 /* eslint-env mocha */
 
-const Block = require('@ipld/block')
+const path = require('path')
 const assert = require('assert')
-const ZipDatastore = require('./zipcar.js')
+const unlink = require('util').promisify(require('fs').unlink)
+
+const ZipDatastore = require('../')
+
+const Block = require('@ipld/block')
 const { DAGNode, DAGLink } = require('ipld-dag-pb')
 const pbUtil = require('ipld-dag-pb').util
-const unlink = require('util').promisify(require('fs').unlink)
 
 const rawBlocks = 'aaaa bbbb cccc zzzz'.split(' ').map((s) => Block.encoder(Buffer.from(s), 'raw'))
 const pbBlocks = []
@@ -52,11 +55,11 @@ describe('Zipcar', () => {
       // add all but raw zzzz
       await zipDs.put(await block.cid(), await block.encode())
     }
-    zipDs.setComment((await cborBlocks[2].cid()).toString())
+    zipDs.setRoots(await cborBlocks[2].cid())
 
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
-    await verifyComment(zipDs)
+    await verifyRoots(zipDs)
 
     await zipDs.close()
   })
@@ -65,7 +68,7 @@ describe('Zipcar', () => {
     const zipDs = new ZipDatastore('./test.zcar')
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
-    await verifyComment(zipDs)
+    await verifyRoots(zipDs)
     await zipDs.close()
   })
 
@@ -74,7 +77,7 @@ describe('Zipcar', () => {
 
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
-    await verifyComment(zipDs)
+    await verifyRoots(zipDs)
 
     await zipDs.delete(await rawBlocks[1].cid()) // middle raw
     await zipDs.delete(await pbBlocks[1].cid()) // middle pb
@@ -82,11 +85,11 @@ describe('Zipcar', () => {
 
     await zipDs.put(await rawBlocks[3].cid(), await rawBlocks[3].encode()) // zzzz
 
-    zipDs.setComment((await cborBlocks[1].cid()).toString())
+    zipDs.setRoots(await cborBlocks[1].cid())
 
     await verifyHas(zipDs, true)
     await verifyBlocks(zipDs, true)
-    await verifyComment(zipDs, true)
+    await verifyRoots(zipDs, true)
 
     await zipDs.close()
   })
@@ -95,17 +98,117 @@ describe('Zipcar', () => {
     const zipDs = new ZipDatastore('./test.zcar')
     await verifyHas(zipDs, true)
     await verifyBlocks(zipDs, true)
-    await verifyComment(zipDs, true)
+    await verifyRoots(zipDs, true)
+    await zipDs.close()
+  })
+
+  it('rewrite modified, no cache prime', async () => {
+    const zipDs = new ZipDatastore('./test.zcar')
+    await zipDs.put(await rawBlocks[1].cid(), await rawBlocks[1].encode())
+    await zipDs.put(await pbBlocks[1].cid(), await pbBlocks[1].encode())
+    await zipDs.put(await cborBlocks[1].cid(), await cborBlocks[1].encode())
+    zipDs.setRoots(await cborBlocks[2].cid())
+    await zipDs.close()
+  })
+
+  it('read rewritten modified', async () => {
+    const zipDs = new ZipDatastore('./test.zcar')
+    await verifyHas(zipDs)
+    await verifyBlocks(zipDs)
+    await verifyRoots(zipDs)
+    await zipDs.close()
+  })
+
+  it('redundant put()s for potential duplicates', async () => {
+    const zipDs = new ZipDatastore('./test.zcar')
+    await zipDs.put(await rawBlocks[1].cid(), await rawBlocks[1].encode())
+    await zipDs.put(await pbBlocks[1].cid(), await pbBlocks[1].encode())
+    await zipDs.put(await cborBlocks[1].cid(), await cborBlocks[1].encode())
+    zipDs.setRoots(await cborBlocks[2].cid())
+    await zipDs.close()
+  })
+
+  it('read rewritten with redundant put()s', async () => {
+    const zipDs = new ZipDatastore('./test.zcar')
+    await verifyHas(zipDs)
+    await verifyBlocks(zipDs)
+    await verifyRoots(zipDs)
+    await zipDs.close()
+  })
+
+  it('verify only roots', async () => {
+    // tests deferred open for getRoots()
+    const zipDs = new ZipDatastore('./test.zcar')
+    await verifyRoots(zipDs)
+    await zipDs.close()
+  })
+
+  it('verify get() first', async () => {
+    // tests deferred open for getRoots()
+    const zipDs = new ZipDatastore('./test.zcar')
+    await verifyBlocks(zipDs)
+    await verifyHas(zipDs)
+    await verifyRoots(zipDs)
+    await zipDs.close()
+  })
+
+  it('modify delete with deferred open', async () => {
+    const zipDs = new ZipDatastore('./test.zcar')
+
+    await zipDs.delete(await rawBlocks[1].cid()) // middle raw
+    await zipDs.delete(await pbBlocks[1].cid()) // middle pb
+    await zipDs.delete(await cborBlocks[1].cid()) // middle pb
+    await zipDs.close()
+  })
+
+  it('read modified with deferred open delete', async () => {
+    const zipDs = new ZipDatastore('./test.zcar')
+    await verifyHas(zipDs, true)
+    await verifyBlocks(zipDs, true)
+    await zipDs.close()
+  })
+
+  it('redundant delete()s', async () => {
+    const zipDs = new ZipDatastore('./test.zcar')
+
+    // should already be gone
+    await zipDs.delete(await rawBlocks[1].cid()) // middle raw
+    await zipDs.delete(await pbBlocks[1].cid()) // middle pb
+    await zipDs.delete(await cborBlocks[1].cid()) // middle pb
+    await zipDs.close()
+  })
+
+  it('read modified with redundant deletes', async () => {
+    const zipDs = new ZipDatastore('./test.zcar')
+    await verifyHas(zipDs, true)
+    await verifyBlocks(zipDs, true)
+    await zipDs.close()
+  })
+
+  it('put()s with Uint8Arrays', async () => {
+    const zipDs = new ZipDatastore('./test.zcar')
+    await zipDs.put(await rawBlocks[1].cid(), new Uint8Array(await rawBlocks[1].encode()))
+    await zipDs.put(await pbBlocks[1].cid(), new Uint8Array(await pbBlocks[1].encode()))
+    await zipDs.put(await cborBlocks[1].cid(), new Uint8Array(await cborBlocks[1].encode()))
+    zipDs.setRoots(await cborBlocks[2].cid())
+    await zipDs.close()
+  })
+
+  it('read rewritten with Uint8Arrays', async () => {
+    const zipDs = new ZipDatastore('./test.zcar')
+    await verifyHas(zipDs)
+    await verifyBlocks(zipDs)
+    await verifyRoots(zipDs)
     await zipDs.close()
   })
 
   it('from go', async () => {
     // parse a file created in go-ds-zipcar with the same data
-    const zipDs = new ZipDatastore('./go.zcar')
+    const zipDs = new ZipDatastore(path.join(__dirname, 'go.zcar'))
 
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
-    await verifyComment(zipDs)
+    await verifyRoots(zipDs)
 
     await zipDs.close()
   })
@@ -132,9 +235,9 @@ async function verifyHas (zipDs, modified) {
     for (let i = 0; i < 3; i++) {
       if (modified && i === 1) {
         // second of each type is removed from modified
-        await verifyHasnt(await blocks[i].cid(), `block #${i} (${type})`)
+        await verifyHasnt(await blocks[i].cid(), `block #${i} (${type} / ${await blocks[i].cid()})`)
       } else {
-        await verifyHas(await blocks[i].cid(), `block #${i} (${type})`)
+        await verifyHas(await blocks[i].cid(), `block #${i} (${type} / ${await blocks[i].cid()})`)
       }
     }
 
@@ -183,7 +286,7 @@ async function verifyBlocks (zipDs, modified) {
   }
 }
 
-async function verifyComment (zipDs, modified) {
-  const expected = (await cborBlocks[modified ? 1 : 2].cid()).toString()
-  assert.strictEqual(await zipDs.getComment(), expected)
+async function verifyRoots (zipDs, modified) {
+  const expected = await cborBlocks[modified ? 1 : 2].cid()
+  assert.deepStrictEqual(await zipDs.getRoots(), [expected])
 }
