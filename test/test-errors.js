@@ -2,10 +2,8 @@
 const path = require('path')
 const fs = require('fs').promises
 const assert = require('assert')
-const CID = require('cids')
 const ZipDatastore = require('../')
-
-const acid = new CID('bafyreih34u3kglyunorqexbllnkkejmxtvrbwivtz63iaujzf5w47nbvka')
+const { acid } = require('./fixture-data')
 
 describe('Errors', () => {
   it('unimplemented methods', async () => {
@@ -20,9 +18,9 @@ describe('Errors', () => {
 
   it('bad root type', async () => {
     const zipDs = new ZipDatastore(path.join(__dirname, 'go.zcar'))
-    assert.throws(() => { zipDs.setRoots('blip') })
-    assert.throws(() => { zipDs.setRoots(['blip']) })
-    assert.throws(() => { zipDs.setRoots([acid, false]) })
+    assert.rejects(zipDs.setRoots('blip'))
+    assert.rejects(zipDs.setRoots(['blip']))
+    assert.rejects(zipDs.setRoots([acid, false]))
     await zipDs.close()
   })
 
