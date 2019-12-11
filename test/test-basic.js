@@ -5,46 +5,18 @@ const assert = require('assert')
 const unlink = require('util').promisify(require('fs').unlink)
 
 const ZipDatastore = require('../')
+const { makeData, verifyBlocks, verifyHas, verifyRoots } = require('./fixture-data')
 
-const Block = require('@ipld/block')
-const { DAGNode, DAGLink } = require('ipld-dag-pb')
-const pbUtil = require('ipld-dag-pb').util
+let rawBlocks
+let pbBlocks
+let cborBlocks
 
-const rawBlocks = 'aaaa bbbb cccc zzzz'.split(' ').map((s) => Block.encoder(Buffer.from(s), 'raw'))
-const pbBlocks = []
-const cborBlocks = []
-const allBlocks = [['raw', rawBlocks], ['pb', pbBlocks], ['cbor', cborBlocks]]
-
-describe('Zipcar', () => {
+describe('Basic', () => {
   before(async () => {
-    // set up more complicated blocks
-    async function toBlock (pnd) {
-      const buf = pbUtil.serialize(pnd)
-      const cid = await pbUtil.cid(buf, { cidVersion: 0 })
-      return Block.create(buf, cid)
-    }
-
-    const pnd1 = new DAGNode(null, [
-      new DAGLink('cat', await (rawBlocks[0].encode()).byteLength, await rawBlocks[0].cid())
-    ])
-    pbBlocks.push(await toBlock(pnd1))
-
-    const pnd2 = new DAGNode(null, [
-      new DAGLink('dog', await (rawBlocks[1].encode()).byteLength, await rawBlocks[1].cid()),
-      new DAGLink('first', pnd1.size, await pbBlocks[0].cid())
-    ])
-    pbBlocks.push(await toBlock(pnd2))
-
-    const pnd3 = new DAGNode(null, [
-      new DAGLink('bear', await (rawBlocks[2].encode()).byteLength, await rawBlocks[2].cid()),
-      new DAGLink('second', pnd2.size, await pbBlocks[1].cid())
-    ])
-    pbBlocks.push(await toBlock(pnd3))
-
-    const cbstructs = [toCBORStruct('foo', 100, false), toCBORStruct('bar', -100, false), toCBORStruct('baz', 0, true)]
-    for (const b of cbstructs) {
-      cborBlocks.push(Block.encoder(b, 'dag-cbor'))
-    }
+    const data = await makeData()
+    rawBlocks = data.rawBlocks
+    pbBlocks = data.pbBlocks
+    cborBlocks = data.cborBlocks
 
     await unlink('./test.zcar').catch(() => {})
   })
@@ -55,7 +27,7 @@ describe('Zipcar', () => {
       // add all but raw zzzz
       await zipDs.put(await block.cid(), await block.encode())
     }
-    zipDs.setRoots(await cborBlocks[2].cid())
+    await zipDs.setRoots(await cborBlocks[2].cid())
 
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
@@ -202,6 +174,34 @@ describe('Zipcar', () => {
     await zipDs.close()
   })
 
+  it('no roots', async () => {
+    await unlink('./test.zcar')
+
+    let zipDs = new ZipDatastore('./test.zcar')
+    for (const block of rawBlocks.slice(0, 3).concat(pbBlocks).concat(cborBlocks)) {
+      await zipDs.put(await block.cid(), await block.encode())
+    }
+    await verifyHas(zipDs)
+    await verifyBlocks(zipDs)
+    assert.deepStrictEqual(await zipDs.getRoots(), [], 'no roots')
+    await zipDs.close()
+
+    zipDs = new ZipDatastore('./test.zcar')
+    await verifyHas(zipDs)
+    await verifyBlocks(zipDs)
+    assert.deepStrictEqual(await zipDs.getRoots(), [], 'no roots')
+  })
+
+  it('noops on empty', async () => {
+    await unlink('./test.zcar')
+    const zipDs = new ZipDatastore('./test.zcar')
+    await zipDs.delete(await rawBlocks[1].cid()) // middle raw
+    await zipDs.delete(await pbBlocks[1].cid()) // middle pb
+    await zipDs.delete(await cborBlocks[1].cid()) // middle pb
+    await assert.rejects(zipDs.get(await cborBlocks[1].cid()))
+    await zipDs.close()
+  })
+
   it('from go', async () => {
     // parse a file created in go-ds-zipcar with the same data
     const zipDs = new ZipDatastore(path.join(__dirname, 'go.zcar'))
@@ -217,76 +217,3 @@ describe('Zipcar', () => {
     unlink('./test.zcar').catch(() => {})
   })
 })
-
-function toCBORStruct (s, i, b) {
-  return { s, i, b }
-}
-
-async function verifyHas (zipDs, modified) {
-  async function verifyHas (cid, name) {
-    assert.ok(await zipDs.has(cid), `datastore doesn't have expected key for ${name}`)
-  }
-
-  async function verifyHasnt (cid, name) {
-    assert.ok(!(await zipDs.has(cid)), `datastore has unexpected key for ${name}`)
-  }
-
-  for (const [type, blocks] of allBlocks) {
-    for (let i = 0; i < 3; i++) {
-      if (modified && i === 1) {
-        // second of each type is removed from modified
-        await verifyHasnt(await blocks[i].cid(), `block #${i} (${type} / ${await blocks[i].cid()})`)
-      } else {
-        await verifyHas(await blocks[i].cid(), `block #${i} (${type} / ${await blocks[i].cid()})`)
-      }
-    }
-
-    if (modified && type === 'raw') {
-      await verifyHas(await blocks[3].cid(), `block #3 (${type})`) // zzzz
-    }
-  }
-
-  // not a block we have
-  await verifyHasnt(await Block.encoder(Buffer.from('dddd'), 'raw').cid(), 'dddd')
-}
-
-async function verifyBlocks (zipDs, modified) {
-  async function verifyBlock (block, index, type) {
-    const expected = await block.encode()
-    let actual
-    try {
-      actual = await zipDs.get(await block.cid())
-    } catch (err) {
-      assert.ifError(err, `get block length #${index} (${type})`)
-    }
-    assert.strictEqual(actual.length, expected.length, `comparing block length #${index} (${type})`)
-    for (let j = 0; j < actual.length; j++) {
-      assert.deepStrictEqual(actual[j], expected[j], `comparing block byte#${j} #${index} (${type})`)
-    }
-  }
-
-  for (const [type, blocks] of allBlocks) {
-    for (let i = 0; i < 3; i++) {
-      const block = blocks[i]
-
-      if (modified && i === 1) {
-        await assert.rejects(zipDs.get(await block.cid()), {
-          name: 'Error',
-          message: 'Not Found'
-        })
-        continue
-      }
-
-      await verifyBlock(block, i, type)
-    }
-
-    if (modified && type === 'raw') {
-      await verifyBlock(blocks[3], 3, type) // zzzz
-    }
-  }
-}
-
-async function verifyRoots (zipDs, modified) {
-  const expected = await cborBlocks[modified ? 1 : 2].cid()
-  assert.deepStrictEqual(await zipDs.getRoots(), [expected])
-}

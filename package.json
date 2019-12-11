@@ -5,7 +5,9 @@
   "main": "zipcar.js",
   "scripts": {
     "lint": "standard",
-    "test": "standard && hundreds mocha test/test-*.js",
+    "test:node": "hundreds mocha test/test-*.js",
+    "test:browser": "npx polendina --cleanup test/test-immutable.js",
+    "test": "npm run lint && npm run test:node && npm run test:browser",
     "docs": "jsdoc4readme --readme zipcar.js"
   },
   "author": "Rod <rod@vagg.org> (http://r.va.gg/)",
@@ -15,6 +17,7 @@
     "cids": "~0.7.1",
     "compress-commons": "^2.1.1",
     "interface-datastore": "~0.8.0",
+    "jszip": "^3.2.2",
     "node-stream-zip": "^1.8.2"
   },
   "devDependencies": {
