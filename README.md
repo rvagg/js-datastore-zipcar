@@ -1,4 +1,4 @@
-# datastore-zipcar (js-ds-zipcar)
+# datastore-zipcar (js-ds-zipcar) [![Build Status](https://github.com/rvagg/js-ds-zipcar/workflows/CI/badge.svg)](https://github.com/rvagg/js-ds-zipcar/actions?workflow=CI)
 
 [![NPM](https://nodei.co/npm/datastore-zipcar.svg)](https://nodei.co/npm/datastore-zipcar/)
 
