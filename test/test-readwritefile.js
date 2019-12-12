@@ -4,14 +4,14 @@ const path = require('path')
 const assert = require('assert')
 const unlink = require('util').promisify(require('fs').unlink)
 
-const ZipDatastore = require('../')
+const { readWriteFile } = require('../')
 const { makeData, verifyBlocks, verifyHas, verifyRoots } = require('./fixture-data')
 
 let rawBlocks
 let pbBlocks
 let cborBlocks
 
-describe('Basic', () => {
+describe('Read / Write File', () => {
   before(async () => {
     const data = await makeData()
     rawBlocks = data.rawBlocks
@@ -22,7 +22,8 @@ describe('Basic', () => {
   })
 
   it('build new', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
+    await assert.rejects(zipDs.get(await cborBlocks[0].cid())) // empty
     for (const block of rawBlocks.slice(0, 3).concat(pbBlocks).concat(cborBlocks)) {
       // add all but raw zzzz
       await zipDs.put(await block.cid(), await block.encode())
@@ -37,7 +38,7 @@ describe('Basic', () => {
   })
 
   it('read existing', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
     await verifyRoots(zipDs)
@@ -45,7 +46,7 @@ describe('Basic', () => {
   })
 
   it('modify existing', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
 
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
@@ -67,7 +68,7 @@ describe('Basic', () => {
   })
 
   it('read modified', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await verifyHas(zipDs, true)
     await verifyBlocks(zipDs, true)
     await verifyRoots(zipDs, true)
@@ -75,7 +76,7 @@ describe('Basic', () => {
   })
 
   it('rewrite modified, no cache prime', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await zipDs.put(await rawBlocks[1].cid(), await rawBlocks[1].encode())
     await zipDs.put(await pbBlocks[1].cid(), await pbBlocks[1].encode())
     await zipDs.put(await cborBlocks[1].cid(), await cborBlocks[1].encode())
@@ -84,7 +85,7 @@ describe('Basic', () => {
   })
 
   it('read rewritten modified', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
     await verifyRoots(zipDs)
@@ -92,7 +93,7 @@ describe('Basic', () => {
   })
 
   it('redundant put()s for potential duplicates', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await zipDs.put(await rawBlocks[1].cid(), await rawBlocks[1].encode())
     await zipDs.put(await pbBlocks[1].cid(), await pbBlocks[1].encode())
     await zipDs.put(await cborBlocks[1].cid(), await cborBlocks[1].encode())
@@ -101,7 +102,7 @@ describe('Basic', () => {
   })
 
   it('read rewritten with redundant put()s', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
     await verifyRoots(zipDs)
@@ -110,14 +111,14 @@ describe('Basic', () => {
 
   it('verify only roots', async () => {
     // tests deferred open for getRoots()
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await verifyRoots(zipDs)
     await zipDs.close()
   })
 
   it('verify get() first', async () => {
     // tests deferred open for getRoots()
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await verifyBlocks(zipDs)
     await verifyHas(zipDs)
     await verifyRoots(zipDs)
@@ -125,7 +126,7 @@ describe('Basic', () => {
   })
 
   it('modify delete with deferred open', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
 
     await zipDs.delete(await rawBlocks[1].cid()) // middle raw
     await zipDs.delete(await pbBlocks[1].cid()) // middle pb
@@ -134,14 +135,14 @@ describe('Basic', () => {
   })
 
   it('read modified with deferred open delete', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await verifyHas(zipDs, true)
     await verifyBlocks(zipDs, true)
     await zipDs.close()
   })
 
   it('redundant delete()s', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
 
     // should already be gone
     await zipDs.delete(await rawBlocks[1].cid()) // middle raw
@@ -151,14 +152,14 @@ describe('Basic', () => {
   })
 
   it('read modified with redundant deletes', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await verifyHas(zipDs, true)
     await verifyBlocks(zipDs, true)
     await zipDs.close()
   })
 
   it('put()s with Uint8Arrays', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await zipDs.put(await rawBlocks[1].cid(), new Uint8Array(await rawBlocks[1].encode()))
     await zipDs.put(await pbBlocks[1].cid(), new Uint8Array(await pbBlocks[1].encode()))
     await zipDs.put(await cborBlocks[1].cid(), new Uint8Array(await cborBlocks[1].encode()))
@@ -167,7 +168,7 @@ describe('Basic', () => {
   })
 
   it('read rewritten with Uint8Arrays', async () => {
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
     await verifyRoots(zipDs)
@@ -177,7 +178,7 @@ describe('Basic', () => {
   it('no roots', async () => {
     await unlink('./test.zcar')
 
-    let zipDs = new ZipDatastore('./test.zcar')
+    let zipDs = await readWriteFile('./test.zcar')
     for (const block of rawBlocks.slice(0, 3).concat(pbBlocks).concat(cborBlocks)) {
       await zipDs.put(await block.cid(), await block.encode())
     }
@@ -186,7 +187,7 @@ describe('Basic', () => {
     assert.deepStrictEqual(await zipDs.getRoots(), [], 'no roots')
     await zipDs.close()
 
-    zipDs = new ZipDatastore('./test.zcar')
+    zipDs = await readWriteFile('./test.zcar')
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
     assert.deepStrictEqual(await zipDs.getRoots(), [], 'no roots')
@@ -194,7 +195,7 @@ describe('Basic', () => {
 
   it('noops on empty', async () => {
     await unlink('./test.zcar')
-    const zipDs = new ZipDatastore('./test.zcar')
+    const zipDs = await readWriteFile('./test.zcar')
     await zipDs.delete(await rawBlocks[1].cid()) // middle raw
     await zipDs.delete(await pbBlocks[1].cid()) // middle pb
     await zipDs.delete(await cborBlocks[1].cid()) // middle pb
@@ -204,7 +205,7 @@ describe('Basic', () => {
 
   it('from go', async () => {
     // parse a file created in go-ds-zipcar with the same data
-    const zipDs = new ZipDatastore(path.join(__dirname, 'go.zcar'))
+    const zipDs = await readWriteFile(path.join(__dirname, 'go.zcar'))
 
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)

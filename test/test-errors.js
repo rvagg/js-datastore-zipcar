@@ -1,14 +1,13 @@
 /* eslint-env mocha */
-const path = require('path')
+
 const fs = require('fs').promises
 const assert = require('assert')
-const ZipDatastore = require('../')
-const { acid } = require('./fixture-data')
+const { fromBuffer, readWriteFile } = require('../')
+const { acid, zcar } = require('./fixture-data')
 
 describe('Errors', () => {
   it('unimplemented methods', async () => {
-    const zipDs = new ZipDatastore(path.join(__dirname, 'go.zcar'))
-
+    const zipDs = await fromBuffer(zcar)
     await assert.rejects(zipDs.query())
     await assert.rejects(zipDs.query('foo'))
     await assert.rejects(zipDs.batch())
@@ -16,47 +15,44 @@ describe('Errors', () => {
     await zipDs.close()
   })
 
-  it('bad root type', async () => {
-    const zipDs = new ZipDatastore(path.join(__dirname, 'go.zcar'))
-    assert.rejects(zipDs.setRoots('blip'))
-    assert.rejects(zipDs.setRoots(['blip']))
-    assert.rejects(zipDs.setRoots([acid, false]))
-    await zipDs.close()
-  })
-
   it('bad gets', async () => {
-    const zipDs = new ZipDatastore(path.join(__dirname, 'go.zcar'))
+    const zipDs = await fromBuffer(zcar)
     await assert.rejects(zipDs.get('blip')) // not a CID key
     await assert.doesNotReject(zipDs.get(acid)) // sanity check
     await zipDs.close()
   })
 
   it('bad has\'', async () => {
-    const zipDs = new ZipDatastore(path.join(__dirname, 'go.zcar'))
+    const zipDs = await fromBuffer(zcar)
     await assert.rejects(zipDs.has('blip')) // not a CID key
     await assert.doesNotReject(zipDs.has(acid)) // sanity check
     await zipDs.close()
   })
 
+  it('bad root type', async () => {
+    const zipDs = await readWriteFile('test.zcar')
+    assert.rejects(zipDs.setRoots('blip'))
+    assert.rejects(zipDs.setRoots(['blip']))
+    assert.rejects(zipDs.setRoots([acid, false]))
+    await zipDs.close()
+  })
+
   it('bad puts', async () => {
-    const zipDs = new ZipDatastore(path.join(__dirname, 'go.zcar'))
+    const zipDs = await readWriteFile('test.zcar')
     await assert.rejects(zipDs.put(acid, 'blip')) // not a Buffer value
     await assert.rejects(zipDs.put('blip', Buffer.from('blip'))) // not a CID key
     await zipDs.close()
   })
 
-  it('double open', async () => {
-    const zipDs = new ZipDatastore(path.join(__dirname, 'go.zcar'))
-    await zipDs.open()
-    await assert.rejects(zipDs.open())
-    await zipDs.close()
-  })
-
   it('create with unwritable file', async () => {
+    await (fs.unlink('blip').catch(() => {}))
     await fs.writeFile('blip', '')
     await fs.chmod('blip', 0o144)
-    const zipDs = new ZipDatastore('blip')
-    await assert.rejects(zipDs.open())
+    await assert.rejects(readWriteFile('blip'))
     await fs.unlink('blip')
+  })
+
+  after(async () => {
+    return fs.unlink('test.zcar').catch(() => {})
   })
 })
