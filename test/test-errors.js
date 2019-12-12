@@ -8,8 +8,6 @@ const { acid, zcar } = require('./fixture-data')
 describe('Errors', () => {
   it('unimplemented methods', async () => {
     const zipDs = await fromBuffer(zcar)
-    await assert.rejects(zipDs.query())
-    await assert.rejects(zipDs.query('foo'))
     await assert.rejects(zipDs.batch())
     await assert.rejects(zipDs.batch('foo'))
     await zipDs.close()
@@ -26,6 +24,14 @@ describe('Errors', () => {
     const zipDs = await fromBuffer(zcar)
     await assert.rejects(zipDs.has('blip')) // not a CID key
     await assert.doesNotReject(zipDs.has(acid)) // sanity check
+    await zipDs.close()
+  })
+
+  it('bad queries', async () => {
+    const zipDs = await fromBuffer(zcar)
+    assert.throws(() => zipDs.query('blip'))
+    assert.throws(() => zipDs.query(false))
+    assert.throws(() => zipDs.query(null))
     await zipDs.close()
   })
 
