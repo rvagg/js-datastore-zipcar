@@ -78,6 +78,7 @@ The nature of ZIP archives (and the libraries currently available in JavaScript 
  * [`async ZipDatastore#setRoots(comment)`](#ZipDatastore_setRoots)
  * [`async ZipDatastore#getRoots()`](#ZipDatastore_getRoots)
  * [`async ZipDatastore#close()`](#ZipDatastore_close)
+ * [`async ZipDatastore#query([q])`](#ZipDatastore_query)
 
 <a name="ZipDatastore__fromBuffer"></a>
 ### `async ZipDatastore.fromBuffer(buffer)`
@@ -107,6 +108,8 @@ via stream from the underlying file on demand.
 This is an efficient create-mode, useful for reading the contents of an
 existing, large ZipDatastore archive.
 
+This create-mode is not available in a browser environment.
+
 **Parameters:**
 
 * **`file`** _(`string`)_: the path to an existing ZIP archive.
@@ -123,6 +126,8 @@ directly to the provided stream.
 
 This is an efficient create-mode, useful for writing large amounts of data to
 ZIP archive.
+
+This create-mode is not available in a browser environment.
 
 **Parameters:**
 
@@ -142,6 +147,8 @@ full read and cache of the original archive prior to flushing back to disk.
 
 This is an inefficient create-mode, useful for read/write operations on
 smaller data sets but not as useful for large data sets.
+
+This create-mode is not available in a browser environment.
 
 **Parameters:**
 
@@ -260,6 +267,27 @@ and supported by the create-mode used.
 If the create-mode of the current ZipDatastore supports writes and a
 mutation operation has been called on the open archive (`put()`,
 `delete()`), a new ZIP archive will be written with the mutated contents.
+
+<a name="ZipDatastore_query"></a>
+### `async ZipDatastore#query([q])`
+
+Create an async iterator for the entries of this ZipDatastore. Ideally for
+use with `for await ... of` to lazily iterate over the entries.
+
+By default, each element returned by the iterator will be an object with a
+`key` property with the string CID of the entry and a `value` property with
+the binary data.
+
+Supply `{ keysOnly: true }` as an argument and the elements will only
+contain the keys, without needing to load the values from storage.
+
+The `filters` parameter is also supported as per the Datastore interface.
+
+**Parameters:**
+
+* **`q`** _(`Object`, optional)_: query parameters
+
+**Return value**  _(`AsyncIterator.<key, value>`)_
 
 ## License and Copyright
 

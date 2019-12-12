@@ -1,3 +1,4 @@
+const { filter, map } = require('interface-datastore').utils
 const { toKey } = require('./lib/util')
 
 /**
@@ -161,8 +162,66 @@ class ZipDatastore {
     throw new Error('Unimplemented operation')
   }
 
-  async query (q) {
-    throw new Error('Unimplemented operation')
+  /**
+   * @name ZipDatastore#query
+   * @description
+   * Create an async iterator for the entries of this ZipDatastore. Ideally for
+   * use with `for await ... of` to lazily iterate over the entries.
+   *
+   * By default, each element returned by the iterator will be an object with a
+   * `key` property with the string CID of the entry and a `value` property with
+   * the binary data.
+   *
+   * Supply `{ keysOnly: true }` as an argument and the elements will only
+   * contain the keys, without needing to load the values from storage.
+   *
+   * The `filters` parameter is also supported as per the Datastore interface.
+   * @function
+   * @async
+   * @generator
+   * @param {Object} [q] query parameters
+   * @return {AsyncIterator<key,value>}
+   * @yields {Object<key,value>}
+   */
+  query (q) {
+    if (q === undefined) {
+      q = {}
+    }
+
+    if (typeof q !== 'object') {
+      throw new TypeError('query argument must be an object, supply `{}` to match all')
+    }
+
+    const keys = this._reader.keys()
+
+    let it
+    if (!q.keysOnly) {
+      const mapper = async (key) => ({ key, value: await this.get(key) })
+      it = map(keys, mapper)
+    } else {
+      it = map(keys, (key) => ({ key }))
+    }
+
+    if (Array.isArray(q.filters)) {
+      it = q.filters.reduce((it, key) => filter(it, key), it)
+    }
+
+    /* not supported
+    if (Array.isArray(q.orders)) {
+      it = q.orders.reduce((it, key) => sortAll(it, key), it)
+    }
+
+    if (q.offset != null) {
+      let i = 0
+      it = filter(it, () => i++ >= q.offset)
+    }
+
+    if (q.limit != null) {
+      it = take(it, q.limit)
+    }
+    */
+
+    return it
   }
 }
 
