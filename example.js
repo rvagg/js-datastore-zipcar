@@ -1,11 +1,11 @@
-const ZipDatastore = require('./zipcar.js')
+const ZipDatastore = require('./')
 const Block = require('@ipld/block')
 
 async function example () {
   const block = Block.encoder(Buffer.from('random meaningless bytes'), 'raw')
   const cid = await block.cid()
 
-  const ds = new ZipDatastore('example.zcar')
+  const ds = await ZipDatastore.readWriteFile('example.zcar')
 
   // store a new block, creates a new file entry in the ZIP archive
   await ds.put(cid, await block.encode())

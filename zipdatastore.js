@@ -1,8 +1,9 @@
-const { toKey } = require('./util')
+const { toKey } = require('./lib/util')
 
 /**
- * ZipDatastore is a class to manage reading from, and writing to a ZIP archives using [CID](https://github.com/multiformats/js-cid)s as keys and
- * file names in the ZIP and binary block data as the file contents.
+ * ZipDatastore is a class to manage reading from, and writing to a ZIP archives
+ * using [CID](https://github.com/multiformats/js-cid)s as keys and file names
+ * in the ZIP and binary block data as the file contents.
  *
  * @class
  */
@@ -15,13 +16,18 @@ class ZipDatastore {
   /**
    * @name ZipDatastore#get
    * @description
-   * Retrieve a block from this archive. `key`s are converted to `CID` automatically, whether you provide a native
-   * Datastore `Key` object, a `String` or a `CID`. `key`s that cannot be converted will throw an error.
+   * Retrieve a block from this archive. `key`s are converted to `CID`
+   * automatically, whether you provide a native Datastore `Key` object, a
+   * `String` or a `CID`. `key`s that cannot be converted will throw an error.
+   *
+   * This operation may not be supported in some create-modes; a write-only mode
+   * may throw an error if unsupported.
    * @function
    * @async
    * @memberof ZipDatastore
-   * @param {string|Key|CID} key a `CID` or `CID`-convertable object to identify the block.
-   * @return {Buffer} the IPLD bloc data referenced by the CID
+   * @param {string|Key|CID} key a `CID` or `CID`-convertable object to identify
+   * the block.
+   * @return {Buffer} the IPLD block data referenced by the CID.
    */
   async get (key) {
     key = toKey(key, 'get')
@@ -31,13 +37,18 @@ class ZipDatastore {
   /**
    * @name ZipDatastore#has
    * @description
-   * Check whether a block exists in this archive. `key`s are converted to `CID` automatically, whether you provide a native
-   * Datastore `Key` object, a `String` or a `CID`. `key`s that cannot be converted will throw an error.
+   * Check whether a block exists in this archive. `key`s are converted to `CID`
+   * automatically, whether you provide a native Datastore `Key` object, a
+   * `String` or a `CID`. `key`s that cannot be converted will throw an error.
+   *
+   * This operation may not be supported in some create-modes; a write-only mode
+   * may throw an error if unsupported.
    * @function
    * @async
    * @memberof ZipDatastore
-   * @param {string|Key|CID} key a `CID` or `CID`-convertable object to identify the block.
-   * @return {boolean}
+   * @param {string|Key|CID} key a `CID` or `CID`-convertable object to identify
+   * the block.
+   * @return {boolean} indicating whether the key exists in this Datastore.
    */
   async has (key) {
     key = toKey(key, 'has')
@@ -47,16 +58,21 @@ class ZipDatastore {
   /**
    * @name ZipDatastore#put
    * @description
-   * Store a block in this archive. `key`s are converted to `CID` automatically, whether you provide a native
-   * Datastore `Key` object, a `String` or a `CID`. `key`s that cannot be converted will throw an error.
+   * Store a block in this archive. `key`s are converted to `CID` automatically,
+   * whether you provide a native Datastore `Key` object, a `String` or a `CID`.
+   * `key`s that cannot be converted will throw an error.
    *
-   * The entry will not be written to the ZIP archive until `close()` is called, in the meantime it is stored
-   * in memory.
+   * Depending on the create-mode of this ZipDatastore, the entry may not be
+   * written to the ZIP archive until `close()` is called and in the meantime be
+   * stored in memory. If you need to write a lot of data, ensure you are using
+   * a stream-writing create-mode.
    * @function
    * @async
    * @memberof ZipDatastore
-   * @param {string|Key|CID} key a `CID` or `CID`-convertable object to identify the `value`.
-   * @param {Buffer|Uint8Array} value an IPLD block matching the given `key` `CID`.
+   * @param {string|Key|CID} key a `CID` or `CID`-convertable object to identify
+   * the `value`.
+   * @param {Buffer|Uint8Array} value an IPLD block matching the given `key`
+   * `CID`.
    */
   async put (key, value) {
     key = toKey(key, 'put')
@@ -69,14 +85,20 @@ class ZipDatastore {
   /**
    * @name ZipDatastore#delete
    * @description
-   * Delete a block from this archive. `key`s are converted to `CID` automatically, whether you provide a native
-   * Datastore `Key` object, a `String` or a `CID`. `key`s that cannot be converted will throw an error.
+   * Delete a block from this archive. `key`s are converted to `CID`
+   * automatically, whether you provide a native Datastore `Key` object, a
+   * `String` or a `CID`. `key`s that cannot be converted will throw an error.
    *
-   * If the `key` does not exist, `put()` will silently return.
+   * If the `key` does not exist, `delete()` will silently return.
+   *
+   * This operation may not be supported in some create-modes; a write-only mode
+   * may throw an error if unsupported. Where supported, this mode is likely to
+   * result in state stored in memory until the final `close()` is called.
    * @function
    * @async
    * @memberof ZipDatastore
-   * @param {string|Key|CID} key a `CID` or `CID`-convertable object to identify the block.
+   * @param {string|Key|CID} key a `CID` or `CID`-convertable object to identify
+   * the block.
    */
   async delete (key) {
     key = toKey(key, 'delete')
@@ -88,8 +110,12 @@ class ZipDatastore {
    * @description
    * Set the list of roots in the ZipDatastore archive on this ZIP archive.
    *
-   * The roots will be written to the comment section of the ZIP archive when `close()` is called, in the meantime it is stored
-   * in memory.
+   * The roots will be written to the comment section of the ZIP archive when
+   * `close()` is called, in the meantime it is stored in memory.
+   *
+   * In some create-modes this operation may not be supported. In read-only
+   * modes you cannot change the roots of a ZipDatastore and an error may be
+   * thrown.
    * @function
    * @async
    * @param {string} comment an arbitrary comment to store in the ZIP archive.
@@ -101,7 +127,8 @@ class ZipDatastore {
   /**
    * @name ZipDatastore#getRoots
    * @description
-   * Get the list of roots set on this ZIP archive if they exist exists. See {@link ZipDatastore#setRoots}.
+   * Get the list of roots set on this ZIP archive if they exist exists. See
+   * {@link ZipDatastore#setRoots}.
    * @function
    * @async
    * @return {Array<CID>} an array of CIDs
@@ -113,10 +140,12 @@ class ZipDatastore {
   /**
    * @name ZipDatastore#close
    * @description
-   * Close this archive and write its new contents if required.
+   * Close this archive, free resources and write its new contents if required
+   * and supported by the create-mode used.
    *
-   * If a mutation operation has been called on the open archive (`put()`, `delete()`), a new ZIP archive will be
-   * written with the mutated contents.
+   * If the create-mode of the current ZipDatastore supports writes and a
+   * mutation operation has been called on the open archive (`put()`,
+   * `delete()`), a new ZIP archive will be written with the mutated contents.
    * @function
    * @async
    */
