@@ -1,6 +1,6 @@
-const { NoWriter } = require('./reader-writer-iface')
-const createBufferReader = require('./reader-buffer')
-const ZipDatastore = require('./zipdatastore')
+const { NoWriter } = require('./lib/reader-writer-iface')
+const createBufferReader = require('./lib/reader-buffer')
+const ZipDatastore = require('./lib/zipdatastore')
 
 async function fromBuffer (buffer) {
   const reader = await createBufferReader(buffer)
