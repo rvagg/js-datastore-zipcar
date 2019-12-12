@@ -9,7 +9,7 @@
     "test:node": "hundreds mocha test/test-*.js",
     "test:browser": "npx polendina --cleanup test/test-frombuffer.js",
     "test": "npm run lint && npm run test:node && npm run test:browser",
-    "docs": "jsdoc4readme --readme zipcar.js"
+    "docs": "jsdoc4readme --readme *.js"
   },
   "author": "Rod <rod@vagg.org> (http://r.va.gg/)",
   "license": "Apache-2.0",

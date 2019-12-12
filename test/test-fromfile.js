@@ -39,4 +39,15 @@ describe('From File', () => {
     await zipDs.close()
     await assert.rejects(zipDs.close())
   })
+
+  it('from go', async () => {
+    // parse a file created in go-ds-zipcar with the same data
+    const zipDs = await fromFile(path.join(__dirname, 'go.zcar'))
+
+    await verifyHas(zipDs)
+    await verifyBlocks(zipDs)
+    await verifyRoots(zipDs)
+
+    await zipDs.close()
+  })
 })
