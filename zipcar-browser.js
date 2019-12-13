@@ -26,3 +26,6 @@ async function readBuffer (buffer) {
 }
 
 module.exports.readBuffer = readBuffer
+
+// for backward compat to not impact semver-major in v2
+module.exports.fromBuffer = readBuffer

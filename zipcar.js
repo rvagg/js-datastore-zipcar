@@ -111,3 +111,8 @@ module.exports.readBuffer = readBuffer
 module.exports.readFile = readFile
 module.exports.writeStream = writeStream
 module.exports.readWriteFile = readWriteFile
+
+// for backward compat to not impact semver-major in v2
+module.exports.fromBuffer = readBuffer
+module.exports.fromFile = readFile
+module.exports.toStream = writeStream
