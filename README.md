@@ -56,9 +56,9 @@ Archive:  example.zcar
 In this example, the `readWriteFile()` create-mode is used. This allows for read and mutation operations on a single ZipDatastore. Other create-modes are useful where the environment, data and needs demand:
 
 * **[`ZipDatastore.readWriteFile(file)`](#ZipDatastore__readWriteFile)**: read and mutate a ZIP archive file. Makes use of memory to cache reads and buffer the entire contents of the archive prior to writing. This mode is _not available_ in a browser environment.
-* **[`ZipDatastore.fromBuffer(buffer)`](#ZipDatastore__fromBuffer)**: read a ZIP archive from a `Buffer` or `Uint8Array`. Does not support mutation operations, only reads. This mode is the only mode _available_ in a browser environment.
-* **[`ZipDatastore.fromFile(file)`](#ZipDatastore__fromFile)**: read a ZIP archive directly from a file. Does not support mutation operations, only reads. However, this mode is very efficient for large data sets, with no caching and streaming reads internally. This mode is _not available_ in a browser environment.
-* **[`ZipDatastore.toStream(stream)`](#ZipDatastore__toStream)**: write a ZIP archive to a stream (e.g. `fs.createWriteStream(file)`). Does not support read operations, only writes, and the writes are append-only (i.e. no `delete()`). However, this mode is very efficient for dumping large data sets, with minimal caching (the manifest at the end of the ZIP requires some caching of keys and positions), and streaming writes. This mode is _not available_ in a browser environment.
+* **[`ZipDatastore.readBuffer(buffer)`](#ZipDatastore__readBuffer)**: read a ZIP archive from a `Buffer` or `Uint8Array`. Does not support mutation operations, only reads. This mode is the only mode _available_ in a browser environment.
+* **[`ZipDatastore.readFile(file)`](#ZipDatastore__readFile)**: read a ZIP archive directly from a file. Does not support mutation operations, only reads. However, this mode is very efficient for large data sets, with no caching and streaming reads internally. This mode is _not available_ in a browser environment.
+* **[`ZipDatastore.writeStream(stream)`](#ZipDatastore__writeStream)**: write a ZIP archive to a stream (e.g. `fs.createWriteStream(file)`). Does not support read operations, only writes, and the writes are append-only (i.e. no `delete()`). However, this mode is very efficient for dumping large data sets, with minimal caching (the manifest at the end of the ZIP requires some caching of keys and positions), and streaming writes. This mode is _not available_ in a browser environment.
 
 The nature of ZIP archives (and the libraries currently available in JavaScript to work with them) means there are some awkward limitations. For example, there is no `fromStream()` operation because ZIP files require a seek to the end to read the manifest before entries may be individually read.
 
@@ -66,7 +66,7 @@ The nature of ZIP archives (and the libraries currently available in JavaScript 
 
 ### Contents
 
- * [`async ZipDatastore.fromBuffer(buffer)`](#ZipDatastore__fromBuffer)
+ * [`async ZipDatastore.readBuffer(buffer)`](#ZipDatastore__readBuffer)
  * [`async ZipDatastore.readFile(file)`](#ZipDatastore__readFile)
  * [`async ZipDatastore.writeStream(stream)`](#ZipDatastore__writeStream)
  * [`async ZipDatastore.readWriteFile(file)`](#ZipDatastore__readWriteFile)
@@ -80,8 +80,8 @@ The nature of ZIP archives (and the libraries currently available in JavaScript 
  * [`async ZipDatastore#close()`](#ZipDatastore_close)
  * [`async ZipDatastore#query([q])`](#ZipDatastore_query)
 
-<a name="ZipDatastore__fromBuffer"></a>
-### `async ZipDatastore.fromBuffer(buffer)`
+<a name="ZipDatastore__readBuffer"></a>
+### `async ZipDatastore.readBuffer(buffer)`
 
 Create a ZipDatastore from a Buffer containing the contents of an existing
 ZIP archive which contains IPLD data. The ZipDatastore returned will not
