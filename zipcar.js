@@ -6,10 +6,10 @@ const { Reader, EmptyReader, NoWriter, CachingReader, CachingDeferredWriter } = 
 const createFileReader = require('./lib/reader-file')
 const createStreamWriter = require('./lib/writer-stream')
 const ZipDatastore = require('./zipdatastore')
-const { fromBuffer } = require('./zipcar-browser')
+const { readBuffer } = require('./zipcar-browser')
 
 /**
- * @name ZipDatastore.fromFile
+ * @name ZipDatastore.readFile
  * @description
  * Create a ZipDatastore from an existing ZIP archive containing IPLD data. The
  * ZipDatastore returned will not support mutation operations (`put()`,
@@ -27,14 +27,14 @@ const { fromBuffer } = require('./zipcar-browser')
  * @param {string} file the path to an existing ZIP archive.
  * @returns {ZipDatastore} a read-only, streaming ZipDatastore.
  */
-async function fromFile (file) {
+async function readFile (file) {
   const reader = await createFileReader(file)
   const writer = new NoWriter()
   return new ZipDatastore(reader, writer)
 }
 
 /**
- * @name ZipDatastore.toStream
+ * @name ZipDatastore.writeStream
  * @description
  * Create a ZipDatastore that writes to a writable stream. The ZipDatastore
  * returned will _only_ support append operations (`put()` and `setRoots()`, but
@@ -52,7 +52,7 @@ async function fromFile (file) {
  * @param {WritableStream} stream a writable stream
  * @returns {ZipDatastore} an append-only, streaming ZipDatastore.
  */
-async function toStream (stream) {
+async function writeStream (stream) {
   const reader = new Reader()
   const writer = await createStreamWriter(stream)
   return new ZipDatastore(reader, writer)
@@ -107,7 +107,7 @@ async function readWriteFile (file) {
   return new ZipDatastore(reader, writer)
 }
 
-module.exports.fromBuffer = fromBuffer
-module.exports.fromFile = fromFile
-module.exports.toStream = toStream
+module.exports.readBuffer = readBuffer
+module.exports.readFile = readFile
+module.exports.writeStream = writeStream
 module.exports.readWriteFile = readWriteFile

@@ -67,8 +67,8 @@ The nature of ZIP archives (and the libraries currently available in JavaScript 
 ### Contents
 
  * [`async ZipDatastore.fromBuffer(buffer)`](#ZipDatastore__fromBuffer)
- * [`async ZipDatastore.fromFile(file)`](#ZipDatastore__fromFile)
- * [`async ZipDatastore.toStream(stream)`](#ZipDatastore__toStream)
+ * [`async ZipDatastore.readFile(file)`](#ZipDatastore__readFile)
+ * [`async ZipDatastore.writeStream(stream)`](#ZipDatastore__writeStream)
  * [`async ZipDatastore.readWriteFile(file)`](#ZipDatastore__readWriteFile)
  * [`class ZipDatastore`](#ZipDatastore)
  * [`async ZipDatastore#get(key)`](#ZipDatastore_get)
@@ -97,8 +97,8 @@ mode supported in a browser environment.
 
 **Return value**  _(`ZipDatastore`)_: a read-only ZipDatastore.
 
-<a name="ZipDatastore__fromFile"></a>
-### `async ZipDatastore.fromFile(file)`
+<a name="ZipDatastore__readFile"></a>
+### `async ZipDatastore.readFile(file)`
 
 Create a ZipDatastore from an existing ZIP archive containing IPLD data. The
 ZipDatastore returned will not support mutation operations (`put()`,
@@ -116,8 +116,8 @@ This create-mode is not available in a browser environment.
 
 **Return value**  _(`ZipDatastore`)_: a read-only, streaming ZipDatastore.
 
-<a name="ZipDatastore__toStream"></a>
-### `async ZipDatastore.toStream(stream)`
+<a name="ZipDatastore__writeStream"></a>
+### `async ZipDatastore.writeStream(stream)`
 
 Create a ZipDatastore that writes to a writable stream. The ZipDatastore
 returned will _only_ support append operations (`put()` and `setRoots()`, but

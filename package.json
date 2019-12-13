@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "standard",
     "test:node": "hundreds mocha test/test-*.js",
-    "test:browser": "npx polendina --cleanup test/test-frombuffer.js test/test-query.js",
+    "test:browser": "npx polendina --cleanup test/test-readbuffer.js test/test-query.js",
     "test": "npm run lint && npm run test:node && npm run test:browser",
     "docs": "jsdoc4readme --readme *.js"
   },

@@ -3,14 +3,14 @@
 const assert = require('assert')
 const fs = require('fs')
 const unlink = require('util').promisify(require('fs').unlink)
-const { toStream, fromFile } = require('../')
+const { writeStream, readFile } = require('../')
 const { makeData, verifyBlocks, verifyHas, verifyRoots } = require('./fixture-data')
 
 let rawBlocks
 let pbBlocks
 let cborBlocks
 
-describe('To Stream & From File', () => {
+describe('Read File & Write Stream', () => {
   before(async () => {
     const data = await makeData()
     rawBlocks = data.rawBlocks
@@ -20,8 +20,8 @@ describe('To Stream & From File', () => {
     await unlink('./test.zcar').catch(() => {})
   })
 
-  it('toStream', async () => {
-    const zipDs = await toStream(fs.createWriteStream('./test.zcar'))
+  it('writeStream', async () => {
+    const zipDs = await writeStream(fs.createWriteStream('./test.zcar'))
     for (const block of rawBlocks.slice(0, 3).concat(pbBlocks).concat(cborBlocks)) {
       // add all but raw zzzz
       await zipDs.put(await block.cid(), await block.encode())
@@ -30,16 +30,16 @@ describe('To Stream & From File', () => {
     await zipDs.close()
   })
 
-  it('fromFile', async () => {
-    const zipDs = await fromFile('./test.zcar')
+  it('readFile', async () => {
+    const zipDs = await readFile('./test.zcar')
     await verifyHas(zipDs)
     await verifyBlocks(zipDs)
     await verifyRoots(zipDs)
     await zipDs.close()
   })
 
-  it('toStream errors', async () => {
-    const zipDs = await toStream(fs.createWriteStream('./test.zcar'))
+  it('writeStream errors', async () => {
+    const zipDs = await writeStream(fs.createWriteStream('./test.zcar'))
     await zipDs.put(await cborBlocks[0].cid(), await cborBlocks[0].encode())
     await assert.rejects(zipDs.delete(await cborBlocks[0].cid()))
     await zipDs.close()

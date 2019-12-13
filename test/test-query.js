@@ -2,7 +2,7 @@
 
 const assert = require('assert')
 const path = require('path')
-const { fromBuffer, fromFile } = require('../')
+const { readBuffer, readFile } = require('../')
 const { zcar, makeData, compareBlockData } = require('./fixture-data')
 
 if (!assert.rejects) {
@@ -17,9 +17,9 @@ if (!assert.rejects) {
   }
 }
 
-const factories = [['fromBuffer', () => fromBuffer(zcar)]]
-if (fromFile) { // not in browser
-  factories.push(['fromFile', () => fromFile(path.join(__dirname, 'go.zcar'))])
+const factories = [['readBuffer', () => readBuffer(zcar)]]
+if (readFile) { // not in browser
+  factories.push(['readFile', () => readFile(path.join(__dirname, 'go.zcar'))])
 }
 
 for (const [factoryName, factoryFn] of factories) {

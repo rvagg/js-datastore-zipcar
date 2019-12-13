@@ -3,7 +3,7 @@ const createBufferReader = require('./lib/reader-buffer')
 const ZipDatastore = require('./zipdatastore')
 
 /**
- * @name ZipDatastore.fromBuffer
+ * @name ZipDatastore.readBuffer
  * @description
  * Create a ZipDatastore from a Buffer containing the contents of an existing
  * ZIP archive which contains IPLD data. The ZipDatastore returned will not
@@ -19,10 +19,10 @@ const ZipDatastore = require('./zipdatastore')
  * @param {Buffer|Uint8Array} buffer the byte contents of a ZIP archive
  * @returns {ZipDatastore} a read-only ZipDatastore.
  */
-async function fromBuffer (buffer) {
+async function readBuffer (buffer) {
   const reader = await createBufferReader(buffer)
   const writer = new NoWriter()
   return new ZipDatastore(reader, writer)
 }
 
-module.exports.fromBuffer = fromBuffer
+module.exports.readBuffer = readBuffer

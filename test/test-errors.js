@@ -2,33 +2,33 @@
 
 const fs = require('fs').promises
 const assert = require('assert')
-const { fromBuffer, readWriteFile } = require('../')
+const { readBuffer, readWriteFile } = require('../')
 const { acid, zcar } = require('./fixture-data')
 
 describe('Errors', () => {
   it('unimplemented methods', async () => {
-    const zipDs = await fromBuffer(zcar)
+    const zipDs = await readBuffer(zcar)
     await assert.rejects(zipDs.batch())
     await assert.rejects(zipDs.batch('foo'))
     await zipDs.close()
   })
 
   it('bad gets', async () => {
-    const zipDs = await fromBuffer(zcar)
+    const zipDs = await readBuffer(zcar)
     await assert.rejects(zipDs.get('blip')) // not a CID key
     await assert.doesNotReject(zipDs.get(acid)) // sanity check
     await zipDs.close()
   })
 
   it('bad has\'', async () => {
-    const zipDs = await fromBuffer(zcar)
+    const zipDs = await readBuffer(zcar)
     await assert.rejects(zipDs.has('blip')) // not a CID key
     await assert.doesNotReject(zipDs.has(acid)) // sanity check
     await zipDs.close()
   })
 
   it('bad queries', async () => {
-    const zipDs = await fromBuffer(zcar)
+    const zipDs = await readBuffer(zcar)
     assert.throws(() => zipDs.query('blip'))
     assert.throws(() => zipDs.query(false))
     assert.throws(() => zipDs.query(null))
